@@ -1,28 +1,27 @@
 -- Copyright (c) 2024 RAMPAGE Interactive
 -- Written by vq9o
 
--- License: MIT
--- GitHub: https://github.com/vq9o/luau-snowflake/tree/main
-
 local Snowflake = {}
 
 export type SnowflakeId = number
 export type SnowflakeParsed = {
 	timestamp: number,
+	human_timestamp: string,
 	worker_id: number,
 	count: number,
 	snowflake: SnowflakeId,
 }
 
 -- Constants for bit shifts and masks
-local EPOCH: number = 1420070400000 -- Default epoch is January 1st, 2015
 local WORKER_ID_BITS: number = 5
 local COUNT_BITS: number = 12
 local MAX_COUNT: number = (2 ^ COUNT_BITS) - 1
 local WORKER_ID_SHIFT: number = COUNT_BITS
 local TIMESTAMP_SHIFT: number = WORKER_ID_SHIFT + WORKER_ID_BITS
+local DEBUG_MODE: boolean = true
 
 -- Variables
+local EPOCH: number = 1420070400000 -- Default epoch is January 1st, 2015
 local worker_id: number = 0
 local count: number = 0
 local last_timestamp: number = -1
@@ -41,7 +40,11 @@ local function wait_for_next_millisecond(timestamp: number): number
 	return timestamp
 end
 
-function Snowflake.new(): SnowflakeId
+function Snowflake.new(useString: boolean | nil): SnowflakeId
+	if useString == nil then
+		useString = false
+	end
+
 	local timestamp: number = get_current_timestamp()
 
 	if timestamp < last_timestamp then
@@ -61,16 +64,45 @@ function Snowflake.new(): SnowflakeId
 
 	local id: SnowflakeId = ((timestamp - EPOCH) * (2 ^ TIMESTAMP_SHIFT)) + (worker_id * (2 ^ WORKER_ID_SHIFT)) + count
 
-	return id
+	return useString and tostring(id) or id
 end
 
+-- Function to parse a snowflake id
 function Snowflake:parse(snowflake: SnowflakeId): SnowflakeParsed
 	local timestamp: number = math.floor(snowflake / (2 ^ TIMESTAMP_SHIFT)) + EPOCH
 	local worker_id: number = math.floor(snowflake / (2 ^ WORKER_ID_SHIFT)) % (2 ^ WORKER_ID_BITS)
 	local count: number = snowflake % (2 ^ COUNT_BITS)
 
+	if DEBUG_MODE then
+		-- Convert timestamp from milliseconds to seconds for os.date
+		local utc_time_in_seconds = math.floor(timestamp / 1000)
+		local milliseconds = timestamp % 1000
+
+		-- Function to determine if a given timestamp is in Daylight Saving Time
+		local function is_dst(timestamp)
+			local t = os.date("*t", timestamp)
+			local start = os.time({ year = t.year, month = 3, day = 8, hour = 2, min = 0, sec = 0 })
+			local end_ = os.time({ year = t.year, month = 11, day = 1, hour = 2, min = 0, sec = 0 })
+			start = start + (8 - os.date("%w", start)) % 7 * 24 * 3600
+			end_ = end_ + (7 - os.date("%w", end_)) % 7 * 24 * 3600
+			return timestamp >= start and timestamp < end_
+		end
+
+		-- Determine if we should adjust for PDT or PST
+		local is_in_dst = is_dst(utc_time_in_seconds)
+		local pst_offset = is_in_dst and -7 * 3600 or -8 * 3600
+
+		-- Adjust to PST/PDT
+		local pst_time_in_seconds = utc_time_in_seconds + pst_offset
+
+		local human_timestamp = os.date("%Y-%m-%d %H:%M:%S", pst_time_in_seconds) .. string.format(".%03d", milliseconds)
+
+		print(human_timestamp)
+	end
+
 	return {
 		timestamp = timestamp,
+		human_timestamp = os.date("%Y-%m-%d %H:%M:%S", math.floor(timestamp / 1000)),
 		worker_id = worker_id,
 		count = count,
 		snowflake = snowflake,
@@ -82,7 +114,7 @@ function Snowflake:set_worker_id(new_worker_id: number)
 	if new_worker_id < 0 or new_worker_id >= (2 ^ WORKER_ID_BITS) then
 		error("Worker ID out of bounds")
 	end
-    
+
 	worker_id = new_worker_id
 end
 
@@ -123,6 +155,23 @@ function Snowflake:validate(snowflake: SnowflakeId): (boolean, string)
 	end
 
 	return true, "Valid snowflake"
+end
+
+function Snowflake:isNewer(snowflake1: SnowflakeId, snowflake2: SnowflakeId): boolean
+	return self:parse(snowflake1).timestamp > self:parse(snowflake2).timestamp
+end
+
+function Snowflake:compare(snowflake1: SnowflakeId, snowflake2: SnowflakeId): number
+	local parsed1 = self:parse(snowflake1)
+	local parsed2 = self:parse(snowflake2)
+
+	if parsed1.timestamp > parsed2.timestamp then
+		return 1 -- snowflake1 is newer
+	elseif parsed1.timestamp < parsed2.timestamp then
+		return -1 -- snowflake2 is newer
+	else
+		return 0 -- Both snowflakes are from the same timestamp, they are equal
+	end
 end
 
 return Snowflake
