@@ -174,4 +174,79 @@ function Snowflake:compare(snowflake1: SnowflakeId, snowflake2: SnowflakeId): nu
 	end
 end
 
+-- Function to calculate the age of a snowflake in days
+function Snowflake:get_age_in_days(snowflake: SnowflakeId): number
+	local parsed = self:parse(snowflake)
+	local current_timestamp = get_current_timestamp()
+	local age_in_milliseconds = current_timestamp - parsed.timestamp
+
+	return age_in_milliseconds / (1000 * 60 * 60 * 24) -- Convert milliseconds to days
+end
+
+-- Function to calculate the age of a snowflake in hours
+function Snowflake:get_age_in_hours(snowflake: SnowflakeId): number
+	local parsed = self:parse(snowflake)
+	local current_timestamp = get_current_timestamp()
+	local age_in_milliseconds = current_timestamp - parsed.timestamp
+
+	return age_in_milliseconds / (1000 * 60 * 60) -- Convert milliseconds to hours
+end
+
+-- Function to calculate the age of a snowflake in minutes
+function Snowflake:get_age_in_minutes(snowflake: SnowflakeId): number
+	local parsed = self:parse(snowflake)
+	local current_timestamp = get_current_timestamp()
+	local age_in_milliseconds = current_timestamp - parsed.timestamp
+
+	return age_in_milliseconds / (1000 * 60) -- Convert milliseconds to minutes
+end
+
+-- Function to calculate the age of a snowflake in seconds
+function Snowflake:get_age_in_seconds(snowflake: SnowflakeId): number
+	local parsed = self:parse(snowflake)
+	local current_timestamp = get_current_timestamp()
+	local age_in_milliseconds = current_timestamp - parsed.timestamp
+
+	return age_in_milliseconds / 1000 -- Convert milliseconds to seconds
+end
+
+-- Function to calculate the age of a snowflake in weeks
+function Snowflake:get_age_in_weeks(snowflake: SnowflakeId): number
+	local parsed = self:parse(snowflake)
+	local current_timestamp = get_current_timestamp()
+	local age_in_milliseconds = current_timestamp - parsed.timestamp
+
+	return age_in_milliseconds / (1000 * 60 * 60 * 24 * 7) -- Convert milliseconds to weeks
+end
+
+-- Function to calculate the age of a snowflake in months (approximate)
+function Snowflake:get_age_in_months(snowflake: SnowflakeId): number
+	local parsed = self:parse(snowflake)
+	local current_timestamp = get_current_timestamp()
+	local age_in_milliseconds = current_timestamp - parsed.timestamp
+
+	local average_milliseconds_per_month = 1000 * 60 * 60 * 24 * 30.44 -- Average month length (30.44 days)
+	return age_in_milliseconds / average_milliseconds_per_month
+end
+
+-- Function to calculate the age of a snowflake in years (approximate)
+function Snowflake:get_age_in_years(snowflake: SnowflakeId): number
+	local parsed = self:parse(snowflake)
+	local current_timestamp = get_current_timestamp()
+	local age_in_milliseconds = current_timestamp - parsed.timestamp
+
+	local average_milliseconds_per_year = 1000 * 60 * 60 * 24 * 365.25 -- Average year length (accounting for leap years)
+	return age_in_milliseconds / average_milliseconds_per_year
+end
+
+-- Function to calculate the age of a snowflake in decades (approximate)
+function Snowflake:get_age_in_decades(snowflake: SnowflakeId): number
+	local parsed = self:parse(snowflake)
+	local current_timestamp = get_current_timestamp()
+	local age_in_milliseconds = current_timestamp - parsed.timestamp
+
+	local average_milliseconds_per_decade = 1000 * 60 * 60 * 24 * 365.25 * 10 -- Average decade length
+	return age_in_milliseconds / average_milliseconds_per_decade
+end
+
 return Snowflake
